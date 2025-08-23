@@ -5,7 +5,8 @@
   "type": "module",
   "scripts": {
     "start": "node index.js",
-    "build": "npm install"
+    "build": "npm install",
+    "postinstall": "npm rebuild canvas --build-from-source"
   },
   "dependencies": {
     "canvas": "^3.2.0",
