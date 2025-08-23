@@ -3,6 +3,7 @@ import http from "http";
 import { Server } from "socket.io";
 import cors from "cors";
 import { v4 as uuidv4 } from "uuid";
+import { createCanvas } from "canvas";
 
 const app = express();
 app.use(cors());
@@ -50,6 +51,26 @@ app.get("/boards/:id", (req, res) => {
     res.json({ id, name: boards[id].name, segments: boards[id].segments });
 });
 
+function generatePreviewImage(segments, width = 300, height = 150) {
+    const canvas = createCanvas(width, height);
+    const ctx = canvas.getContext("2d");
+    ctx.fillStyle = "#f0f0f0";
+    ctx.fillRect(0, 0, width, height);
+
+    segments.forEach(({ x0, y0, x1, y1, color, size }) => {
+        ctx.strokeStyle = color;
+        ctx.lineWidth = size;
+        ctx.lineCap = "round";
+        ctx.beginPath();
+        ctx.moveTo(x0 * width / window.innerWidth, y0 * height / window.innerHeight);
+        ctx.lineTo(x1 * width / window.innerWidth, y1 * height / window.innerHeight);
+        ctx.stroke();
+        ctx.closePath();
+    });
+
+    return canvas.toDataURL();
+}
+
 //
 // Socket.IO events
 //
@@ -71,8 +92,8 @@ io.on("connection", (socket) => {
         if (!boards[boardId]) return;
         boards[boardId].segments.push(segment);
 
-        // Optionally update preview here later
-        // boards[boardId].preview = generatePreviewImage(boards[boardId].segments);
+        // Update preview
+        boards[boardId].preview = generatePreviewImage(boards[boardId].segments);
 
         socket.to(boardId).emit("draw-segment", segment);
     });
@@ -81,6 +102,7 @@ io.on("connection", (socket) => {
     socket.on("clear-board", (boardId) => {
         if (!boards[boardId]) return;
         boards[boardId].segments = [];
+        boards[boardId].preview = generatePreviewImage([]);
         io.to(boardId).emit("clear-board");
     });
 
