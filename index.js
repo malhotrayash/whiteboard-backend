@@ -52,6 +52,10 @@ app.get("/boards/:id", (req, res) => {
 });
 
 function generatePreviewImage(segments, width = 300, height = 150) {
+    // Assume original canvas size is 1920x1080
+    const originalWidth = 1920;
+    const originalHeight = 1080;
+
     const canvas = createCanvas(width, height);
     const ctx = canvas.getContext("2d");
     ctx.fillStyle = "#f0f0f0";
@@ -59,11 +63,11 @@ function generatePreviewImage(segments, width = 300, height = 150) {
 
     segments.forEach(({ x0, y0, x1, y1, color, size }) => {
         ctx.strokeStyle = color;
-        ctx.lineWidth = size;
+        ctx.lineWidth = Math.max(1, size * (width / originalWidth));
         ctx.lineCap = "round";
         ctx.beginPath();
-        ctx.moveTo(x0 * width / window.innerWidth, y0 * height / window.innerHeight);
-        ctx.lineTo(x1 * width / window.innerWidth, y1 * height / window.innerHeight);
+        ctx.moveTo(x0 * width / originalWidth, y0 * height / originalHeight);
+        ctx.lineTo(x1 * width / originalWidth, y1 * height / originalHeight);
         ctx.stroke();
         ctx.closePath();
     });
