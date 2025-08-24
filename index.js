@@ -18,7 +18,7 @@ const io = new Server(server, {
 
 // Store boards in memory for now
 const boards = {};
-// boards[boardId] = { name, segments: [], preview: null }
+// boards[boardId] = { name, segments: [], preview: null, users: [] }
 
 //
 // REST API
@@ -82,13 +82,31 @@ io.on("connection", (socket) => {
     console.log("A user connected");
 
     // Join board room
-    socket.on("join-board", (boardId) => {
+    socket.on("join-board", ({ boardId, username }) => {
         if (!boards[boardId]) {
-            boards[boardId] = { name: "Untitled Board", segments: [], preview: null };
+            boards[boardId] = { name: "Untitled Board", segments: [], preview: null, users: [] };
         }
         socket.join(boardId);
+        socket.boardId = boardId;
+        socket.username = username;
+
+        // Add user if not present
+        if (!boards[boardId].users) boards[boardId].users = [];
+        boards[boardId].users.push(username);
+
         // Send current board data
         socket.emit("init", boards[boardId].segments);
+
+        // Notify all clients in board
+        io.to(boardId).emit("active-users", boards[boardId].users);
+    });
+
+    socket.on("leave-board", ({ boardId, username }) => {
+        if (boards[boardId] && boards[boardId].users) {
+            boards[boardId].users = boards[boardId].users.filter(u => u !== username);
+            io.to(boardId).emit("active-users", boards[boardId].users);
+        }
+        socket.leave(boardId);
     });
 
     // Drawing events
@@ -111,6 +129,11 @@ io.on("connection", (socket) => {
     });
 
     socket.on("disconnect", () => {
+        const { boardId, username } = socket;
+        if (boardId && boards[boardId] && boards[boardId].users) {
+            boards[boardId].users = boards[boardId].users.filter(u => u !== username);
+            io.to(boardId).emit("active-users", boards[boardId].users);
+        }
         console.log("User disconnected");
     });
 });
